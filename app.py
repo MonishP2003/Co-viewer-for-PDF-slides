@@ -4,7 +4,7 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired
-import fitz  # PyMuPDF
+import fitz  
 import io
 import os
 
@@ -15,7 +15,7 @@ socketio = SocketIO(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# Store the current page and file for each room
+
 rooms = {}
 users = {}
 files = {}
@@ -31,8 +31,6 @@ class User(UserMixin):
         self.role = role
 
 users_db = {
-    # 'admin': User('1', 'admin', 'faculty'),
-    # 'student': User('2', 'student', 'student')
 }
 
 class LoginForm(FlaskForm):
@@ -57,7 +55,7 @@ def register():
         username = request.form['username']
         password = request.form['password']
         role = request.form['role']
-        # Add user registration logic here
+
         if username in users_db:
             flash('Username already exists. Please choose a different username.')
         else:
@@ -65,7 +63,7 @@ def register():
             new_user = User(new_id, username, password, role)
             users_db[username] = new_user
             flash('Registration successful! Please log in.')
-            print(users_db)  # Print users_db after registering
+            print(users_db)  
             return redirect(url_for('login'))
     return render_template('register.html')
 
@@ -110,7 +108,7 @@ def upload_file():
             file.save(filepath)
             room = request.form['room']
             files[room] = filepath
-            rooms[room] = 1  # Reset to page 1
+            rooms[room] = 1  
             socketio.emit('page_update', {'page': rooms[room]}, room=room)
             return 'File uploaded successfully', 200
     except Exception as e:
@@ -124,7 +122,7 @@ def pdf_page(room, page):
         if room not in files:
             return 'No file uploaded', 400
         doc = fitz.open(files[room])
-        page = doc.load_page(page - 1)  # Page numbers are 0-based in PyMuPDF
+        page = doc.load_page(page - 1)  
         pix = page.get_pixmap()
         img_data = pix.tobytes("png")
         return send_file(io.BytesIO(img_data), mimetype='image/png')
@@ -138,8 +136,8 @@ def on_join(data):
     room = data['room']
     join_room(room)
     if room not in rooms:
-        rooms[room] = 1  # Default to page 1
-        users[room] = request.sid  # First user is admin
+        rooms[room] = 1  
+        users[room] = request.sid  
     emit('page_update', {'page': rooms[room]}, room=room)
 
 @socketio.on('change_page')
@@ -147,10 +145,10 @@ def on_join(data):
 def on_change_page(data):
     room = data['room']
     page = data['page']
-    if current_user.role == 'faculty':  # Faculty changes page for all students
+    if current_user.role == 'faculty':  
         rooms[room] = page
         emit('page_update', {'page': page}, room=room)
-    elif current_user.role == 'student':  # Student changes page only for themselves
+    elif current_user.role == 'student':  
         emit('page_update', {'page': page}, room=request.sid)
 
 @socketio.on('request_presenter_page')

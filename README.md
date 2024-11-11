@@ -1,6 +1,6 @@
 # Co-viewer-for-PDF-slides
-Please use \n
+Please use <br />
 ||
 pip install -r requirements. txt
-||\n
+||<br />
 to install the requirements for the co-pdf viewer

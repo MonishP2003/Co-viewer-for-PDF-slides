@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PDF Co-Viewer</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>PDF Co-Viewer</h1>
+        {% if current_user.is_authenticated %}
+            {% if current_user.role == 'faculty' %}
+                <div>
+                    <input type="file" id="fileInput">
+                    <button onclick="uploadFile()">Upload PDF</button>
+                </div>
+            {% endif %}
+            <div>
+                <button onclick="prevPage()">Previous</button>
+                <button onclick="nextPage()">Next</button>
+                {% if current_user.role == 'student' %}
+                    <button onclick="switchToPresenterSlide()">Switch to Presenter Slide</button>
+                {% endif %}
+            </div>
+            <img id="pdf" src="" alt="PDF Page">
+            <a href="{{ url_for('logout') }}">Logout</a>
+        {% else %}
+            <a href="{{ url_for('login') }}">Login</a>
+        {% endif %}
+    </div>
+    <script>
+        var socket = io();
+        var room = 'default';
+        var currentPage = 1;
+
+        socket.emit('join', {room: room});
+
+        socket.on('page_update', function(data) {
+            currentPage = data.page;
+            updatePage();
+        });
+
+        function updatePage() {
+            document.getElementById('pdf').src = '/pdf/' + room + '/' + currentPage;
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                socket.emit('change_page', {room: room, page: currentPage});
+            }
+        }
+
+        function nextPage() {
+            currentPage++;
+            socket.emit('change_page', {room: room, page: currentPage});
+        }
+
+        function switchToPresenterSlide() {
+            socket.emit('request_presenter_page', {room: room});
+        }
+
+        function uploadFile() {
+            var fileInput = document.getElementById('fileInput');
+            var file = fileInput.files[0];
+            var formData = new FormData();
+            formData.append('file', file);
+            formData.append('room', room);
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            }).then(response => {
+                if (response.ok) {
+                    alert('File uploaded successfully');
+                    socket.emit('join', {room: room});
+                } else {
+                    response.text().then(text => {
+                        alert('File upload failed: ' + text);
+                    });
+                }
+            }).catch(error => {
+                alert('File upload failed: ' + error);
+            });
+        }
+    </script>
+</body>
+</html>
